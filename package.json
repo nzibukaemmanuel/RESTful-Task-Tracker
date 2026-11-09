@@ -15,5 +15,9 @@
   "bugs": {
     "url": "https://github.com/nzibukaemmanuel/RESTful-Task-Tracker/issues"
   },
-  "homepage": "https://github.com/nzibukaemmanuel/RESTful-Task-Tracker#readme"
+  "homepage": "https://github.com/nzibukaemmanuel/RESTful-Task-Tracker#readme",
+  "dependencies": {
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0"
+  }
 }
