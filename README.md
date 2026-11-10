@@ -1,6 +1,6 @@
 # RESTful Task Tracker
 
-A RESTful API for managing tasks, built with **Express.js** on Node.js. It supports full CRUD operations, uses custom middleware for 404 and error handling, reads configuration from environment variables with **dotenv**, and follows an **MVC**-style structure. Tasks are stored in an in-memory array, so there is no database yet.
+A RESTful API for managing tasks, built with **Express.js** on Node.js. It supports full CRUD operations, uses custom middleware for 404 and error handling, reads configuration from environment variables with **dotenv**, and follows an **MVC( Model–View–Controller)**-style structure. Tasks are stored in an in-memory array, so there is no database yet.
 
 ## Topics covered
 
@@ -51,7 +51,10 @@ NODE_ENV=development
 
 ```
 RESTful-Task-Tracker/
-├── server.js                      # App entry point: wires middleware, routes, starts server
+├── app.js                         # Builds the Express app: middleware, routes, /health (no listen)
+├── server.js                      # Entry point: starts the app listening on PORT
+├── tests/
+│   └── api.test.js                # Automated tests (Jest + Supertest)
 ├── config/
 │   └── config.js                  # Reads PORT and NODE_ENV from the environment
 ├── models/
@@ -116,11 +119,30 @@ Base URL: `http://localhost:5000`
 | Method | Endpoint | Description | Success |
 |---|---|---|---|
 | GET | `/` | Welcome message | 200 |
+| GET | `/health` | Health check: status, uptime, task count | 200 |
 | GET | `/api/tasks` | List all tasks | 200 |
 | GET | `/api/tasks/:id` | Get one task | 200 |
 | POST | `/api/tasks` | Create a task | 201 |
 | PATCH | `/api/tasks/:id` | Update one or more fields of a task | 200 |
 | DELETE | `/api/tasks/:id` | Delete a task | 200 |
+
+### Health check
+
+```bash
+curl http://localhost:5000/health
+```
+
+```json
+{
+  "status": "ok",
+  "uptime": 42,
+  "environment": "development",
+  "taskCount": 3,
+  "timestamp": "2026-11-10T09:30:00.000Z"
+}
+```
+
+`uptime` is in seconds since the server started. `taskCount` is the number of tasks currently in memory, so it resets to 0 on restart. If the server is down, the request fails to connect, which is how a monitor would detect a problem.
 
 ### Create a task
 
@@ -202,7 +224,24 @@ Errors are handled in two places:
 - **In-memory storage:** tasks live in a JavaScript array, so **all data is lost when the server restarts**. The model's methods (`getAll`, `getById`, `create`, `update`, `delete`) are the only place that touches the data, so a database can replace the array later without changing the controllers or routes.
 - **PATCH, not PUT:** updates are partial. Only the fields you send change, and `id` and `createdAt` are always preserved.
 - **No authentication or pagination:** out of scope for this lab.
-- **No automated tests:** `npm test` is the default placeholder.
+- **App and server are separate:** `app.js` builds the Express app and `server.js` only starts listening. This lets the tests load the app directly without opening a port.
+
+## Testing
+
+```bash
+npm test
+```
+
+The suite in `tests/api.test.js` uses **Jest** and **Supertest** to send real HTTP requests to the app in memory. It covers:
+
+- The welcome route and `/health`, including that `taskCount` follows created and deleted tasks
+- Creating tasks, including trimming and rejecting a missing, empty or non-string title and malformed JSON
+- Listing, and getting one task by id, including 404 for an unknown id
+- Partial updates, that `id` and `createdAt` cannot be changed, and 400 for invalid fields
+- Deleting, including 404 when deleting twice
+- 404 for unknown routes
+
+The task store is emptied before each test, so tests do not depend on each other. The 500 path is not covered.
 
 ## Scripts
 
@@ -210,9 +249,12 @@ Errors are handled in two places:
 |---|---|---|
 | `npm start` | `node server.js` | Run the server |
 | `npm run dev` | `nodemon server.js` | Run with auto-restart during development |
+| `npm test` | `jest` | Run the automated tests |
 
 ## Dependencies
 
 - **express**: web framework
 - **dotenv**: loads `.env` into `process.env`
 - **nodemon** (dev): restarts the server on file changes
+- **jest** (dev): test runner
+- **supertest** (dev): sends HTTP requests to the app in tests
