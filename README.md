@@ -66,6 +66,7 @@ RESTful-Task-Tracker/
 ├── middleware/
 │   ├── notFoundMiddleware.js      # 404 for unknown routes
 │   └── errorMiddleware.js         # Central error handler
+├── render.yaml                    # Render deployment blueprint
 ├── package.json
 └── .gitignore
 ```
@@ -242,6 +243,45 @@ The suite in `tests/api.test.js` uses **Jest** and **Supertest** to send real HT
 - 404 for unknown routes
 
 The task store is emptied before each test, so tests do not depend on each other. The 500 path is not covered.
+
+## Deploying to Render
+
+The app runs as a normal long-running Node server, so it deploys to [Render](https://render.com) as a **Web Service**. The repo includes a `render.yaml` blueprint with the settings below.
+
+### Option A: Blueprint (recommended)
+
+1. Push the repo to GitHub.
+2. In Render, choose **New → Blueprint** and select this repository.
+3. Render reads `render.yaml` and creates the service. Approve it and wait for the deploy to finish.
+
+### Option B: Manual Web Service
+
+1. In Render, choose **New → Web Service** and connect this repository.
+2. Use these settings:
+
+| Setting | Value |
+|---|---|
+| Runtime | Node |
+| Build command | `npm install` |
+| Start command | `npm start` |
+| Health check path | `/health` |
+| Environment variable | `NODE_ENV=production` |
+
+You do not need to set `PORT`. Render provides it and `config/config.js` reads it.
+
+### After deploying
+
+Render gives you a URL like `https://restful-task-tracker.onrender.com`. Check it with:
+
+```bash
+curl https://<your-service>.onrender.com/health
+```
+
+### Limitations on Render
+
+- **Tasks are lost on restart or redeploy.** Storage is an in-memory array, so this is expected until a database is added.
+- **The free plan sleeps when idle.** After a period without traffic the service spins down. The next request is slow while it wakes up, and the tasks are gone. Check Render's current free-plan terms for the exact behaviour.
+- With `NODE_ENV=production`, error responses do not include stack traces.
 
 ## Scripts
 
